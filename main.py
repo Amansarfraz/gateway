@@ -1,18 +1,22 @@
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
-from fastapi.responses import JSONResponse
-from routes import router
+
+from routes import router  # your routes file
 
 app = FastAPI()
 
-# Rate Limiting
+# 🔥 Rate Limiter Setup
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
+
+# 🔥 Middleware
 app.add_middleware(SlowAPIMiddleware)
 
+# 🔥 Rate Limit Exception Handler
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
@@ -20,10 +24,11 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         content={"error": "Too many requests"}
     )
 
+# 🔥 Home Route (FIXED)
 @app.get("/")
 @limiter.limit("5/minute")
-def home():
-    return {"msg": "API Gateway Running"}
+def home(request: Request):   # ✅ IMPORTANT FIX
+    return {"msg": "API Gateway Running 🚀"}
 
-# Apply rate limit to routes
+# 🔥 Include Routes
 app.include_router(router)
