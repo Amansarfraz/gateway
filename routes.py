@@ -1,68 +1,48 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends
 from database import users_collection
-from auth import hash_password, verify_password, create_token
-from dependencies import get_current_user, role_required
+from auth import hash_password, verify_password, create_token, decode_token
+from models import UserCreate, UserLogin
+from fastapi.security import OAuth2PasswordBearer
 
 router = APIRouter()
 
-# 🔹 Register
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# 🔹 Register user
 @router.post("/register")
-def register(username: str, password: str, role: str = "user"):
+def register(user: UserCreate):
+    if users_collection.find_one({"username": user.username}):
+        raise HTTPException(status_code=400, detail="User already exists")
 
-    if users_collection.find_one({"username": username}):
-        return {"error": "User already exists"}
-
-    user = {
-        "username": username,
-        "password": hash_password(password),
-        "role": role
+    user_doc = {
+        "username": user.username,
+        "password": hash_password(user.password),
+        "role": user.role
     }
+    users_collection.insert_one(user_doc)
+    return {"msg": "User created successfully"}
 
-    users_collection.insert_one(user)
-
-    return {"msg": "User created"}
-
-
-from models import UserLogin
-
+# 🔹 Login user
 @router.post("/login")
-def login(user: UserLogin):   # ✅ Pydantic model
+def login(user: UserLogin):
     db_user = users_collection.find_one({"username": user.username})
-
     if not db_user or not verify_password(user.password, db_user["password"]):
-        return {"error": "Invalid credentials"}
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_token({
         "sub": db_user["username"],
         "role": db_user["role"]
     })
+    return {"access_token": token, "token_type": "bearer"}
 
-    return {
-        "access_token": token,
-        "token_type": "bearer"
-    }
-# 🔐 🔹 Protected (ALL logged users)
+# 🔹 Get current user (protected)
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return payload
+
+# 🔹 Protected route example
 @router.get("/protected")
-def protected(user=Depends(get_current_user)):
-    return {
-        "msg": "You are logged in",
-        "user": user
-    }
-
-
-# 🔥 🔹 Admin ONLY (FULL ACCESS)
-@router.get("/admin")
-def admin_only(user=Depends(role_required(["admin"]))):
-    return {"msg": "Welcome Admin 👑 (Full Access)"}
-
-
-# 🔥 🔹 User + Admin Access
-@router.get("/user")
-def user_access(user=Depends(role_required(["user", "admin"]))):
-    return {"msg": "User Access Allowed 👍"}
-
-
-# 🔥 🔹 Owner Example (Optional)
-@router.get("/owner")
-def owner_only(user=Depends(role_required(["owner", "admin"]))):
-    return {"msg": "Owner Access"}
+def protected_route(user=Depends(get_current_user)):
+    return {"msg": "You are logged in!", "user": user}

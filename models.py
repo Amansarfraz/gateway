@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from bson import ObjectId
 
-# 🔹 Convert MongoDB ObjectId to string
+# 🔹 MongoDB ObjectId support
 class PyObjectId(ObjectId):
     @classmethod
     def __get_validators__(cls):
@@ -14,30 +14,23 @@ class PyObjectId(ObjectId):
             raise ValueError("Invalid ObjectId")
         return ObjectId(v)
 
-# 🔹 Base User Model
-class UserBase(BaseModel):
+# 🔹 Register input
+class UserCreate(BaseModel):
     username: str
+    password: str
     role: str = "user"  # admin / user / owner
 
-# 🔹 Register Model (input)
-class UserCreate(UserBase):
-    password: str
-
-# 🔹 Login Model
+# 🔹 Login input
 class UserLogin(BaseModel):
     username: str
     password: str
 
-# 🔹 Response Model (output)
-class UserResponse(UserBase):
+# 🔹 Response output
+class UserResponse(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id")
+    username: str
+    role: str
 
     class Config:
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
-        
-        from pydantic import BaseModel
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
