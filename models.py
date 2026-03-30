@@ -35,3 +35,9 @@ class UserResponse(UserBase):
     class Config:
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
+        
+        from pydantic import BaseModel
+
+class UserLogin(BaseModel):
+    username: str
+    password: str

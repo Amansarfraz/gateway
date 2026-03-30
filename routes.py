@@ -23,26 +23,24 @@ def register(username: str, password: str, role: str = "user"):
     return {"msg": "User created"}
 
 
-# 🔹 Login (REAL JWT every time)
+from models import UserLogin
+
 @router.post("/login")
-def login(username: str, password: str):
+def login(user: UserLogin):   # ✅ Pydantic model
+    db_user = users_collection.find_one({"username": user.username})
 
-    user = users_collection.find_one({"username": username})
-
-    if not user or not verify_password(password, user["password"]):
+    if not db_user or not verify_password(user.password, db_user["password"]):
         return {"error": "Invalid credentials"}
 
     token = create_token({
-        "sub": user["username"],
-        "role": user["role"]
+        "sub": db_user["username"],
+        "role": db_user["role"]
     })
 
     return {
         "access_token": token,
         "token_type": "bearer"
     }
-
-
 # 🔐 🔹 Protected (ALL logged users)
 @router.get("/protected")
 def protected(user=Depends(get_current_user)):
