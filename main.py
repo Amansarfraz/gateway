@@ -7,6 +7,7 @@ from slowapi.errors import RateLimitExceeded
 
 from routes import router  # your routes file
 
+
 app = FastAPI()
 
 # 🔥 Rate Limiter Setup
@@ -32,3 +33,11 @@ def home(request: Request):   # ✅ IMPORTANT FIX
 
 # 🔥 Include Routes
 app.include_router(router)
+from fastapi import FastAPI
+from routes import auth_routes, student_routes, admin_routes
+
+app = FastAPI()
+
+app.include_router(auth_routes.router)
+app.include_router(student_routes.router)
+app.include_router(admin_routes.router)

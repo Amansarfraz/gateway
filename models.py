@@ -34,3 +34,10 @@ class UserResponse(BaseModel):
     class Config:
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
+        # 🔹 Student Model (MongoDB)
+class Student(BaseModel):
+    name: str
+    roll_no: str
+    department: str
+    semester: int
+    user_id: str  # link with login user
