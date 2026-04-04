@@ -1,6 +1,7 @@
+# auth_routes.py
 from fastapi import APIRouter, HTTPException
 from database import users_collection
-from auth import hash_password, verify_password, create_token
+from auth import hash_password, verify_password, create_access_token
 from models.user import UserCreate, UserLogin
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -27,7 +28,7 @@ def login(user: UserLogin):
     if not db_user or not verify_password(user.password, db_user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_token({
+    token = create_access_token({
         "sub": db_user["username"],
         "role": db_user["role"]
     })

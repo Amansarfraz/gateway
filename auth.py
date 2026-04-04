@@ -1,71 +1,55 @@
-# from datetime import datetime, timedelta
-# from jose import jwt, JWTError
-# from passlib.context import CryptContext
-
-# SECRET_KEY = "CHANGE_THIS_SECRET_KEY"  # 🔥 Change this to a strong secret
-# ALGORITHM = "HS256"
-# ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# # 🔹 Hash password
-# def hash_password(password: str):
-#     return pwd_context.hash(password)
-
-# # 🔹 Verify password
-# def verify_password(plain: str, hashed: str):
-#     return pwd_context.verify(plain, hashed)
-
-# # 🔹 Create JWT token
-# def create_token(data: dict):
-#     to_encode = data.copy()
-#     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-#     to_encode.update({
-#         "exp": expire,
-#         "iat": datetime.utcnow()
-#     })
-#     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-# # 🔹 Decode JWT token
-# def decode_token(token: str):
-#     try:
-#         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-#     except JWTError:
-#         return None
+# auth.py
 from datetime import datetime, timedelta
-from jose import jwt, JWTError
+from typing import Optional
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-SECRET_KEY = "CHANGE_THIS_SECRET_KEY"
+# 🔐 Security settings
+SECRET_KEY = "CHANGE_THIS_SECRET_KEY"  # 🔥 Replace with a strong secret
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# 🔑 Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# 🔐 Hash password
-def hash_password(password: str):
+# 🔹 OAuth2 scheme for FastAPI
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")  # endpoint for token
+
+# =========================
+# Password utilities
+# =========================
+def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
-# 🔐 Verify password
-def verify_password(plain: str, hashed: str):
-    return pwd_context.verify(plain, hashed)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
 
-# 🔐 Create token
-def create_token(data: dict):
+# =========================
+# JWT token utilities
+# =========================
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-
-    expire = datetime.utcnow() + timedelta(minutes=30)
-
-    to_encode.update({
-        "exp": expire,
-        "iat": datetime.utcnow()
-    })
-
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire, "iat": datetime.utcnow()})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# 🔐 Decode token
-def decode_token(token: str):
+def decode_token(token: str) -> Optional[dict]:
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
         return None
+
+# =========================
+# Dependency to get current user
+# =========================
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return payload  # You can return username, role, etc.
