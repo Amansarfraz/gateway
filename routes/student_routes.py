@@ -49,3 +49,10 @@ def get_my_profile(user=Depends(get_current_user)):
 
     student["_id"] = str(student["_id"])
     return student
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.get("/students")
+def get_students():
+    return [{"name": "Aman", "age": 20}]
